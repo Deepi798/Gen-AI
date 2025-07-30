@@ -1,0 +1,42 @@
+from google.colab import files
+uploaded = files.upload()
+
+!pip install streamlit
+import pandas as pd
+from transformers import pipeline
+
+# Load the dataset
+df = pd.read_csv("bts (1).csv")  # Ensure this file is in the same folder
+df = df[['eng_track_title', 'lyrics']].dropna(subset=['lyrics'])
+
+# List available song titles
+song_list = df['eng_track_title'].dropna().astype(str).unique()
+print("🎵 Available BTS Songs:\n")
+for i, title in enumerate(sorted(song_list), 1):
+    print(f"{i}. {title}")
+
+# Ask user to choose a song
+choice = int(input("\nEnter the number of the song you want to analyze: "))
+selected_song = sorted(song_list)[choice - 1]
+
+# Get lyrics
+lyrics = df[df['eng_track_title'] == selected_song]['lyrics'].values[0]
+print(f"\n📜 Lyrics for '{selected_song}':\n")
+print(lyrics[:1000])  # Show first 1000 characters
+
+# Load models
+print("\n✨ Loading models...")
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+generator = pipeline("text-generation", model="gpt2")
+
+# Summarize lyrics
+print("\n📝 Generating summary...")
+summary = summarizer(lyrics[:1000], max_length=60, min_length=25, do_sample=False)[0]['summary_text']
+print(f"\n📝 Summary:\n{summary}")
+
+# Explain meaning
+print("\n🔍 Explaining meaning...")
+prompt = f"Explain the meaning of this BTS song in simple English: {lyrics}"
+meaning = generator(prompt, max_length=100, num_return_sequences=1)[0]['generated_text']
+meaning = meaning.replace(prompt, "").strip()
+print(f"\n🔍 Meaning:\n{meaning}")
